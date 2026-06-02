@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sistema de Vencimentos + WhatsApp V3</title>
+<title>Sistema de Vencimentos + WhatsApp V5</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--blue:#0d78c1;--bg:#f4f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--red:#dc2626;--orange:#f97316;--yellow:#ca8a04;--green:#16a34a;--line:#e5e7eb;--shadow:0 8px 25px rgba(15,23,42,.08)}
@@ -13,17 +13,17 @@ header{background:linear-gradient(135deg,var(--blue),#075985);color:white;paddin
 </style>
 </head>
 <body>
-<header><div class="wrap" style="padding:0"><h1>Sistema de Vencimentos + WhatsApp V3</h1><p>Importe suas planilhas IPTV/P2P e envie mensagens de renovação com um clique.</p></div></header>
+<header><div class="wrap" style="padding:0"><h1>Sistema de Vencimentos + WhatsApp V5</h1><p>Importe uma ou mais planilhas IPTV/P2P ao mesmo tempo e envie mensagens automáticas conforme o vencimento.</p></div></header>
 <div class="wrap">
   <div class="card">
     <div class="controls">
-      <div><label>Importar Excel (.xlsx, .xls ou .csv)</label><input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple></div>
+      <div><label>Importar uma ou mais planilhas (.xlsx, .xls ou .csv)</label><input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple></div>
       <div><label>Área do PIX — coloque a chave que irá na mensagem</label><input id="pixInput" value="54992694186" placeholder="Digite CPF, telefone, e-mail ou chave aleatória"></div>
       <div><label>Próximos dias</label><select id="rangeSelect"><option value="3">Próximos 3 dias</option><option value="5">Próximos 5 dias</option><option value="7">Próximos 7 dias</option><option value="15">Próximos 15 dias</option><option value="30">Próximos 30 dias</option></select></div>
     </div>
-    <div class="toolbar"><button class="primary" onclick="document.getElementById('fileInput').click()">Importar planilha</button><button class="gray" onclick="copyPix()">Copiar PIX</button><button class="gray" onclick="clearAll()">Limpar dados</button><button class="green" onclick="exportCSV()">Exportar relatório CSV</button></div>
+    <div class="toolbar"><button class="primary" onclick="document.getElementById('fileInput').click()">Importar planilhas</button><button class="gray" onclick="copyPix()">Copiar PIX</button><button class="gray" onclick="clearAll()">Limpar dados</button><button class="green" onclick="exportCSV()">Exportar relatório CSV</button></div>
     <p class="muted"><b>PIX editável:</b> você pode trocar a chave a qualquer momento. Ela fica salva neste navegador e todas as mensagens usam a chave atual.</p>
-    <p class="muted">Colunas reconhecidas automaticamente: <b>username</b>, <b>notes</b>, <b>whatsapp</b>, <b>exp_date</b>, <b>system</b>.</p>
+    <p class="muted">Você pode selecionar as duas planilhas juntas. O sistema soma tudo na mesma lista e identifica automaticamente IPTV/P2P pelo nome do arquivo.</p><p class="muted" id="loadedFiles">Nenhuma planilha carregada ainda.</p><p class="muted">Colunas reconhecidas automaticamente: <b>username</b>, <b>notes</b>, <b>whatsapp</b>, <b>exp_date</b>, <b>system</b>.</p>
   </div>
 
   <div class="grid">
@@ -50,7 +50,7 @@ header{background:linear-gradient(135deg,var(--blue),#075985);color:white;paddin
   </div>
 
   <div class="card">
-    <div class="notice">A mensagem do WhatsApp <b>não usa o nome da pessoa</b>. Ela muda automaticamente conforme o vencimento: vencido, hoje, amanhã ou próximo do vencimento.</div>
+    <div class="notice">A mensagem do WhatsApp <b>não usa o nome da pessoa</b>. Ela muda automaticamente conforme o vencimento: vencido recente, vencido há mais de 10 dias, hoje, amanhã ou próximo do vencimento.</div>
     <div class="tableWrap" style="margin-top:12px"><table><thead><tr><th><input type="checkbox" class="check" onchange="selectVisible(this.checked)"></th><th>Usuário</th><th>Obs/Nome interno</th><th>Sistema</th><th>WhatsApp</th><th>Vencimento</th><th>Status</th><th>Dias</th><th>Ações</th></tr></thead><tbody id="tbody"><tr><td colspan="9" class="muted">Importe uma planilha para começar.</td></tr></tbody></table></div>
   </div>
 
@@ -61,7 +61,7 @@ header{background:linear-gradient(135deg,var(--blue),#075985);color:white;paddin
   <div class="footer">Rafael Nutri • Sistema local de cobrança e renovação</div>
 </div>
 <script>
-let rows=[], filtered=[], currentFilter='todos', openedIndex=0;
+let rows=[], filtered=[], currentFilter='todos', openedIndex=0, loadedFileNames=[];
 const today = new Date(); today.setHours(0,0,0,0);
 function normalizeKey(k){return String(k||'').trim().toLowerCase().replace(/\s+/g,'_')}
 function parseDate(v){
@@ -85,11 +85,33 @@ function messageFor(item){ const pix=pixInput.value.trim();
   return `Olá! Passando para lembrar sobre sua mensalidade. Quando desejar renovar, segue a chave PIX:\n\n${pix}`;
 }
 function waLink(item){return `https://wa.me/${item.phone}?text=${encodeURIComponent(messageFor(item))}`}
-function ingest(raw, source){
-  raw.forEach(r=>{let o={}; Object.keys(r).forEach(k=>o[normalizeKey(k)]=r[k]); let exp=parseDate(o.exp_date||o.vencimento||o.validade||o.data_vencimento); if(!exp)return; let item={id:crypto.randomUUID?crypto.randomUUID():Math.random().toString(36), user:String(o.username||o.usuario||o.cliente||'').trim(), note:String(o.notes||o.nome||o.observacao||'').trim(), phone:cleanPhone(o.whatsapp||o.telefone||o.celular), exp, system:String(o.system||source||'Sem sistema').trim()||'Sem sistema', selected:false}; item.days=daysDiff(item.exp); rows.push(item);});
-  rows.sort((a,b)=>a.days-b.days); render();
+function ingest(raw, source, fileName){
+  let before = rows.length;
+  raw.forEach(r=>{let o={}; Object.keys(r).forEach(k=>o[normalizeKey(k)]=r[k]); let exp=parseDate(o.exp_date||o.vencimento||o.validade||o.data_vencimento); if(!exp)return; let item={id:crypto.randomUUID?crypto.randomUUID():Math.random().toString(36), user:String(o.username||o.usuario||o.cliente||'').trim(), note:String(o.notes||o.nome||o.observacao||'').trim(), phone:cleanPhone(o.whatsapp||o.telefone||o.celular), exp, system:String(o.system||source||'Sem sistema').trim()||'Sem sistema', file:fileName||source||'', selected:false}; item.days=daysDiff(item.exp); rows.push(item);});
+  rows.sort((a,b)=>a.days-b.days);
+  return rows.length - before;
 }
-fileInput.addEventListener('change', async e=>{for(const file of e.target.files){const data=await file.arrayBuffer(); const wb=XLSX.read(data,{type:'array',cellDates:true}); wb.SheetNames.forEach(sn=>{const sh=wb.Sheets[sn]; const json=XLSX.utils.sheet_to_json(sh,{defval:''}); ingest(json, file.name.toUpperCase().includes('IPTV')?'IPTV':file.name.toUpperCase().includes('P2P')?'P2P':file.name.replace(/\..+$/,''));});} fileInput.value='';});
+fileInput.addEventListener('change', async e=>{
+  const files=[...e.target.files];
+  if(!files.length) return;
+  let totalImportado=0;
+  for(const file of files){
+    const data=await file.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array',cellDates:true});
+    let importedFromFile=0;
+    wb.SheetNames.forEach(sn=>{
+      const sh=wb.Sheets[sn];
+      const json=XLSX.utils.sheet_to_json(sh,{defval:''});
+      const source=file.name.toUpperCase().includes('IPTV')?'IPTV':file.name.toUpperCase().includes('P2P')?'P2P':file.name.replace(/\..+$/,'');
+      importedFromFile += ingest(json, source, file.name);
+    });
+    loadedFileNames.push(`${file.name} (${importedFromFile} cliente(s))`);
+    totalImportado += importedFromFile;
+  }
+  fileInput.value='';
+  render();
+  alert(`${files.length} planilha(s) processada(s). ${totalImportado} cliente(s) importado(s).`);
+});
 rangeSelect.addEventListener('change',render); pixInput.addEventListener('input',()=>{localStorage.setItem('pix_vencimentos',pixInput.value); renderPreview();});
 const savedPix=localStorage.getItem('pix_vencimentos'); if(savedPix) pixInput.value=savedPix;
 function setFilter(f){currentFilter=f; document.querySelectorAll('.filters button').forEach(b=>b.classList.toggle('active',b.dataset.filter===f)); render();}
@@ -100,7 +122,7 @@ function render(){
   filtered.forEach(item=>{let st=statusOf(item); let dias=item.days<0?`${Math.abs(item.days)} dia(s) vencido`:item.days===0?'Hoje':`Faltam ${item.days} dia(s)`; let tr=document.createElement('tr'); tr.innerHTML=`<td><input type="checkbox" class="check rowCheck" ${item.selected?'checked':''} onchange="toggleSel('${item.id}',this.checked)"></td><td><b>${esc(item.user)}</b></td><td>${esc(item.note)}</td><td>${esc(item.system)}</td><td>${item.phone?esc(item.phone):'<span class="muted">sem número</span>'}</td><td>${fmtDate(item.exp)}</td><td><span class="badge ${st.cls}">${st.label}</span></td><td>${dias}</td><td>${item.phone?`<a class="btn primary mini" target="_blank" href="${waLink(item)}">Enviar WhatsApp</a> <button class="gray mini" onclick="copyMsg('${item.id}')">Copiar msg</button>`:'<span class="muted">cadastre WhatsApp</span>'}</td>`; tb.appendChild(tr);});
 }
 function esc(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
-function updateStats(){totalCount.textContent=rows.length; expiredCount.textContent=rows.filter(i=>i.days<0&&i.phone).length; todayCount.textContent=rows.filter(i=>i.days===0&&i.phone).length; soonCount.textContent=rows.filter(i=>i.days>0&&i.days<=Number(rangeSelect.value)&&i.phone).length; let systems=[...new Set(rows.map(r=>r.system||'Sem sistema'))].sort(); let cur=systemFilter.value; systemFilter.innerHTML='<option value="todos">Todos</option>'+systems.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join(''); systemFilter.value=[...systems,'todos'].includes(cur)?cur:'todos';}
+function updateStats(){ if(document.getElementById('loadedFiles')) loadedFiles.textContent=loadedFileNames.length ? 'Planilhas carregadas: '+loadedFileNames.join(' | ') : 'Nenhuma planilha carregada ainda.'; totalCount.textContent=rows.length; expiredCount.textContent=rows.filter(i=>i.days<0&&i.phone).length; todayCount.textContent=rows.filter(i=>i.days===0&&i.phone).length; soonCount.textContent=rows.filter(i=>i.days>0&&i.days<=Number(rangeSelect.value)&&i.phone).length; let systems=[...new Set(rows.map(r=>r.system||'Sem sistema'))].sort(); let cur=systemFilter.value; systemFilter.innerHTML='<option value="todos">Todos</option>'+systems.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join(''); systemFilter.value=[...systems,'todos'].includes(cur)?cur:'todos';}
 function updateSelected(){selectedInfo.textContent=`${rows.filter(r=>r.selected).length} selecionados`;}
 function toggleSel(id,v){let it=rows.find(r=>r.id===id); if(it)it.selected=v; updateSelected();}
 function selectVisible(v){filtered.forEach(i=>i.selected=v); render();}
@@ -109,7 +131,7 @@ function copyMsg(id){let it=rows.find(r=>r.id===id); navigator.clipboard.writeTe
 function copySelectedPhones(){let list=rows.filter(r=>r.selected&&r.phone).map(r=>r.phone).join('\n'); if(!list)return alert('Nenhum telefone selecionado.'); navigator.clipboard.writeText(list); alert('Telefones copiados!');}
 function openSelectedNext(){let sel=rows.filter(r=>r.selected&&r.phone); if(!sel.length)return alert('Selecione pelo menos um cliente com WhatsApp.'); if(openedIndex>=sel.length)openedIndex=0; window.open(waLink(sel[openedIndex]),'_blank'); openedIndex++;}
 function exportCSV(){let data=[['usuario','observacao','sistema','whatsapp','vencimento','dias','status']]; rows.forEach(i=>data.push([i.user,i.note,i.system,i.phone,fmtDate(i.exp),i.days,statusOf(i).label])); let csv=data.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n'); let blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='relatorio-vencimentos.csv'; a.click();}
-function clearAll(){if(confirm('Limpar todos os dados importados?')){rows=[];filtered=[];render();}}
+function clearAll(){if(confirm('Limpar todos os dados importados?')){rows=[];filtered=[];loadedFileNames=[];render();}}
 function renderPreview(){const pix=pixInput.value.trim(); previewMsgs.textContent=`Vence hoje:\nOlá! Sua mensalidade vence hoje. Deseja renovar?\n\nChave PIX: ${pix}\n\nVence amanhã:\nOlá! Sua mensalidade vence amanhã. Deseja renovar?\n\nChave PIX: ${pix}\n\nPróximo do vencimento:\nOlá! Sua mensalidade está próxima do vencimento. Deseja renovar antecipadamente?\n\nChave PIX: ${pix}\n\nVencido:\nOlá! Identificamos que sua mensalidade está vencida. Deseja renovar?\n\nChave PIX: ${pix}`;}
 renderPreview();
 </script>
