@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sistema de Vencimentos + WhatsApp V6</title>
+<title>Sistema de Vencimentos + WhatsApp V7</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--blue:#0d78c1;--bg:#f4f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--red:#dc2626;--orange:#f97316;--yellow:#ca8a04;--green:#16a34a;--line:#e5e7eb;--shadow:0 8px 25px rgba(15,23,42,.08)}
@@ -13,7 +13,7 @@ header{background:linear-gradient(135deg,var(--blue),#075985);color:white;paddin
 </style>
 </head>
 <body>
-<header><div class="wrap" style="padding:0"><h1>Sistema de Vencimentos + WhatsApp V6</h1><p>Importe uma ou mais planilhas IPTV/P2P ao mesmo tempo e envie mensagens automáticas conforme o vencimento.</p></div></header>
+<header><div class="wrap" style="padding:0"><h1>Sistema de Vencimentos + WhatsApp V7</h1><p>Importe uma ou mais planilhas IPTV/P2P ao mesmo tempo e envie mensagens automáticas conforme o vencimento.</p></div></header>
 <div class="wrap">
   <div class="card">
     <div class="controls">
@@ -81,6 +81,7 @@ function cleanPhone(p){let s=String(p||'').replace(/\D/g,''); if(!s || s==='55')
 function daysDiff(d){return Math.round((d-today)/86400000)}
 function statusOf(item){ if(!item.phone) return {key:'semwhats',label:'Sem WhatsApp',cls:'semwhats'}; if(item.days<=-10) return {key:'reativacao',label:'Reativação',cls:'reativacao'}; if(item.days<0) return {key:'vencido',label:'Vencido recente',cls:'vencido'}; if(item.days===0) return {key:'hoje',label:'Vence hoje',cls:'hoje'}; if(item.days===1) return {key:'amanha',label:'Vence amanhã',cls:'amanha'}; if(item.days<=Number(rangeSelect.value)) return {key:'proximo',label:'Próximo',cls:'proximo'}; return {key:'emdia',label:'Em dia',cls:'emdia'};}
 function messageFor(item){ const pix=pixInput.value.trim();
+  if(item.days<=-10) return `Olá! Tudo bem? Notamos que sua assinatura está inativa há alguns dias. Que tal voltar a ter acesso aos canais, filmes, séries e conteúdos disponíveis?\n\nPodemos reativar sua mensalidade agora.\n\nChave PIX: ${pix}`;
   if(item.days<0) return `Olá! Identificamos que sua mensalidade está vencida. Deseja renovar?\n\nChave PIX: ${pix}`;
   if(item.days===0) return `Olá! Sua mensalidade vence hoje. Deseja renovar?\n\nChave PIX: ${pix}`;
   if(item.days===1) return `Olá! Sua mensalidade vence amanhã. Deseja renovar?\n\nChave PIX: ${pix}`;
@@ -135,7 +136,7 @@ function copySelectedPhones(){let list=rows.filter(r=>r.selected&&r.phone).map(r
 function openSelectedNext(){let sel=rows.filter(r=>r.selected&&r.phone); if(!sel.length)return alert('Selecione pelo menos um cliente com WhatsApp.'); if(openedIndex>=sel.length)openedIndex=0; window.open(waLink(sel[openedIndex]),'_blank'); openedIndex++;}
 function exportCSV(){let data=[['usuario','observacao','sistema','whatsapp','vencimento','dias','status']]; rows.forEach(i=>data.push([i.user,i.note,i.system,i.phone,fmtDate(i.exp),i.days,statusOf(i).label])); let csv=data.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n'); let blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='relatorio-vencimentos.csv'; a.click();}
 function clearAll(){if(confirm('Limpar todos os dados importados?')){rows=[];filtered=[];loadedFileNames=[];render();}}
-function renderPreview(){const pix=pixInput.value.trim(); previewMsgs.textContent=`Vence hoje:\nOlá! Sua mensalidade vence hoje. Deseja renovar?\n\nChave PIX: ${pix}\n\nVence amanhã:\nOlá! Sua mensalidade vence amanhã. Deseja renovar?\n\nChave PIX: ${pix}\n\nPróximo do vencimento:\nOlá! Sua mensalidade está próxima do vencimento. Deseja renovar antecipadamente?\n\nChave PIX: ${pix}\n\nVencido:\nOlá! Identificamos que sua mensalidade está vencida. Deseja renovar?\n\nChave PIX: ${pix}`;}
+function renderPreview(){const pix=pixInput.value.trim(); previewMsgs.textContent=`Vence hoje:\nOlá! Sua mensalidade vence hoje. Deseja renovar?\n\nChave PIX: ${pix}\n\nVence amanhã:\nOlá! Sua mensalidade vence amanhã. Deseja renovar?\n\nChave PIX: ${pix}\n\nPróximo do vencimento:\nOlá! Sua mensalidade está próxima do vencimento. Deseja renovar antecipadamente?\n\nChave PIX: ${pix}\n\nVencido recente, 1 a 9 dias:\nOlá! Identificamos que sua mensalidade está vencida. Deseja renovar?\n\nChave PIX: ${pix}\n\nReativação, 10 dias ou mais vencido:\nOlá! Tudo bem? Notamos que sua assinatura está inativa há alguns dias. Que tal voltar a ter acesso aos canais, filmes, séries e conteúdos disponíveis?\n\nPodemos reativar sua mensalidade agora.\n\nChave PIX: ${pix}`;}
 renderPreview();
 </script>
 </body>
