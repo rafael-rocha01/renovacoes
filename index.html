@@ -76,7 +76,7 @@ function parseDate(v){
 function fmtDate(d){return d?d.toLocaleDateString('pt-BR'):''}
 function cleanPhone(p){let s=String(p||'').replace(/\D/g,''); if(!s || s==='55') return ''; if(!s.startsWith('55')) s='55'+s; return s;}
 function daysDiff(d){return Math.round((d-today)/86400000)}
-function statusOf(item){ if(!item.phone) return {key:'semwhats',label:'Sem WhatsApp',cls:'semwhats'}; if(item.days<0) return {key:'vencido',label:'Vencido',cls:'vencido'}; if(item.days===0) return {key:'hoje',label:'Vence hoje',cls:'hoje'}; if(item.days===1) return {key:'amanha',label:'Vence amanhã',cls:'amanha'}; if(item.days<=Number(rangeSelect.value)) return {key:'proximo',label:'Próximo',cls:'proximo'}; return {key:'emdia',label:'Em dia',cls:'emdia'};}
+function statusOf(item){ if(!item.phone) return {key:'semwhats',label:'Sem WhatsApp',cls:'semwhats'}; if(item.days<=-10) return {key:'reativacao',label:'Reativação',cls:'vencido'}; if(item.days<0) return {key:'vencido',label:'Vencido recente',cls:'vencido'}; if(item.days===0) return {key:'hoje',label:'Vence hoje',cls:'hoje'}; if(item.days===1) return {key:'amanha',label:'Vence amanhã',cls:'amanha'}; if(item.days<=Number(rangeSelect.value)) return {key:'proximo',label:'Próximo',cls:'proximo'}; return {key:'emdia',label:'Em dia',cls:'emdia'};}
 function messageFor(item){ const pix=pixInput.value.trim();
   if(item.days<0) return `Olá! Identificamos que sua mensalidade está vencida. Deseja renovar?\n\nChave PIX: ${pix}`;
   if(item.days===0) return `Olá! Sua mensalidade vence hoje. Deseja renovar?\n\nChave PIX: ${pix}`;
