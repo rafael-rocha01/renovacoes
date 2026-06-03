@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sistema de Vencimentos + WhatsApp V7</title>
+<title>Sistema de Vencimentos + WhatsApp V8</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--blue:#0d78c1;--bg:#f4f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--red:#dc2626;--orange:#f97316;--yellow:#ca8a04;--green:#16a34a;--line:#e5e7eb;--shadow:0 8px 25px rgba(15,23,42,.08)}
@@ -13,7 +13,7 @@ header{background:linear-gradient(135deg,var(--blue),#075985);color:white;paddin
 </style>
 </head>
 <body>
-<header><div class="wrap" style="padding:0"><h1>Sistema de Vencimentos + WhatsApp V7</h1><p>Importe uma ou mais planilhas IPTV/P2P ao mesmo tempo e envie mensagens automáticas conforme o vencimento.</p></div></header>
+<header><div class="wrap" style="padding:0"><h1>Sistema de Vencimentos + WhatsApp V8</h1><p>Importe uma ou mais planilhas IPTV/P2P ao mesmo tempo e envie mensagens automáticas conforme o vencimento.</p></div></header>
 <div class="wrap">
   <div class="card">
     <div class="controls">
@@ -53,7 +53,7 @@ header{background:linear-gradient(135deg,var(--blue),#075985);color:white;paddin
   </div>
 
   <div class="card">
-    <div class="notice">A mensagem do WhatsApp <b>não usa o nome da pessoa</b>. Ela separa automaticamente os vencidos em duas categorias: <b>Vencido recente</b> (1 a 9 dias) e <b>Reativação</b> (10 dias ou mais vencido), com mensagens diferentes.</div>
+    <div class="notice">A mensagem do WhatsApp <b>não usa o nome da pessoa</b>. Ela separa automaticamente os vencidos em duas categorias: <b>Vencido recente</b> (1 a 9 dias) e <b>Reativação</b> (10 dias ou mais vencido), com mensagens diferentes. Os filtros por vencimento mostram clientes <b>com ou sem WhatsApp</b>; quem estiver sem número aparece marcado como Sem WhatsApp.</div>
     <div class="tableWrap" style="margin-top:12px"><table><thead><tr><th><input type="checkbox" class="check" onchange="selectVisible(this.checked)"></th><th>Usuário</th><th>Obs/Nome interno</th><th>Sistema</th><th>WhatsApp</th><th>Vencimento</th><th>Status</th><th>Dias</th><th>Ações</th></tr></thead><tbody id="tbody"><tr><td colspan="9" class="muted">Importe uma planilha para começar.</td></tr></tbody></table></div>
   </div>
 
@@ -79,7 +79,15 @@ function parseDate(v){
 function fmtDate(d){return d?d.toLocaleDateString('pt-BR'):''}
 function cleanPhone(p){let s=String(p||'').replace(/\D/g,''); if(!s || s==='55') return ''; if(!s.startsWith('55')) s='55'+s; return s;}
 function daysDiff(d){return Math.round((d-today)/86400000)}
-function statusOf(item){ if(!item.phone) return {key:'semwhats',label:'Sem WhatsApp',cls:'semwhats'}; if(item.days<=-10) return {key:'reativacao',label:'Reativação',cls:'reativacao'}; if(item.days<0) return {key:'vencido',label:'Vencido recente',cls:'vencido'}; if(item.days===0) return {key:'hoje',label:'Vence hoje',cls:'hoje'}; if(item.days===1) return {key:'amanha',label:'Vence amanhã',cls:'amanha'}; if(item.days<=Number(rangeSelect.value)) return {key:'proximo',label:'Próximo',cls:'proximo'}; return {key:'emdia',label:'Em dia',cls:'emdia'};}
+function dueCategory(item){
+  if(item.days<=-10) return {key:'reativacao',label:'Reativação',cls:'reativacao'};
+  if(item.days<0) return {key:'vencido_recente',label:'Vencido recente',cls:'vencido'};
+  if(item.days===0) return {key:'hoje',label:'Vence hoje',cls:'hoje'};
+  if(item.days===1) return {key:'amanha',label:'Vence amanhã',cls:'amanha'};
+  if(item.days<=Number(rangeSelect.value)) return {key:'proximo',label:'Próximo',cls:'proximo'};
+  return {key:'emdia',label:'Em dia',cls:'emdia'};
+}
+function statusOf(item){ return dueCategory(item); }
 function messageFor(item){ const pix=pixInput.value.trim();
   if(item.days<=-10) return `Olá! Tudo bem? Notamos que sua assinatura está inativa há alguns dias. Que tal voltar a ter acesso aos canais, filmes, séries e conteúdos disponíveis?\n\nPodemos reativar sua mensalidade agora.\n\nChave PIX: ${pix}`;
   if(item.days<0) return `Olá! Identificamos que sua mensalidade está vencida. Deseja renovar?\n\nChave PIX: ${pix}`;
@@ -121,12 +129,12 @@ const savedPix=localStorage.getItem('pix_vencimentos'); if(savedPix) pixInput.va
 function setFilter(f){currentFilter=f; document.querySelectorAll('.filters button').forEach(b=>b.classList.toggle('active',b.dataset.filter===f)); render();}
 function render(){
   const q=searchInput.value.toLowerCase().trim(), sys=systemFilter.value, range=Number(rangeSelect.value);
-  filtered=rows.filter(item=>{let st=statusOf(item); let ok=true; if(currentFilter==='vencido_recente') ok=item.days<0&&item.days>-10&&item.phone; if(currentFilter==='reativacao') ok=item.days<=-10&&item.phone; if(currentFilter==='hoje') ok=item.days===0&&item.phone; if(currentFilter==='amanha') ok=item.days===1&&item.phone; if(currentFilter==='proximos') ok=item.days>0&&item.days<=range&&item.phone; if(currentFilter==='semwhats') ok=!item.phone; if(sys!=='todos') ok=ok&&item.system===sys; if(q) ok=ok&&`${item.user} ${item.note} ${item.phone}`.toLowerCase().includes(q); return ok;});
+  filtered=rows.filter(item=>{let ok=true; if(currentFilter==='vencido_recente') ok=item.days<0&&item.days>-10; if(currentFilter==='reativacao') ok=item.days<=-10; if(currentFilter==='hoje') ok=item.days===0; if(currentFilter==='amanha') ok=item.days===1; if(currentFilter==='proximos') ok=item.days>0&&item.days<=range; if(currentFilter==='semwhats') ok=!item.phone; if(sys!=='todos') ok=ok&&item.system===sys; if(q) ok=ok&&`${item.user} ${item.note} ${item.phone}`.toLowerCase().includes(q); return ok;});
   updateStats(); updateSelected(); renderPreview(); const tb=tbody; tb.innerHTML=''; if(!filtered.length){tb.innerHTML='<tr><td colspan="9" class="muted">Nenhum cliente encontrado nesse filtro.</td></tr>'; return;}
-  filtered.forEach(item=>{let st=statusOf(item); let dias=item.days<0?`${Math.abs(item.days)} dia(s) vencido`:item.days===0?'Hoje':`Faltam ${item.days} dia(s)`; let tr=document.createElement('tr'); tr.innerHTML=`<td><input type="checkbox" class="check rowCheck" ${item.selected?'checked':''} onchange="toggleSel('${item.id}',this.checked)"></td><td><b>${esc(item.user)}</b></td><td>${esc(item.note)}</td><td>${esc(item.system)}</td><td>${item.phone?esc(item.phone):'<span class="muted">sem número</span>'}</td><td>${fmtDate(item.exp)}</td><td><span class="badge ${st.cls}">${st.label}</span></td><td>${dias}</td><td>${item.phone?`<a class="btn primary mini" target="_blank" href="${waLink(item)}">Enviar WhatsApp</a> <button class="gray mini" onclick="copyMsg('${item.id}')">Copiar msg</button>`:'<span class="muted">cadastre WhatsApp</span>'}</td>`; tb.appendChild(tr);});
+  filtered.forEach(item=>{let st=statusOf(item); let dias=item.days<0?`${Math.abs(item.days)} dia(s) vencido`:item.days===0?'Hoje':`Faltam ${item.days} dia(s)`; let tr=document.createElement('tr'); tr.innerHTML=`<td><input type="checkbox" class="check rowCheck" ${item.selected?'checked':''} onchange="toggleSel('${item.id}',this.checked)"></td><td><b>${esc(item.user)}</b></td><td>${esc(item.note)}</td><td>${esc(item.system)}</td><td>${item.phone?esc(item.phone):'<span class="badge semwhats">Sem WhatsApp</span>'}</td><td>${fmtDate(item.exp)}</td><td><span class="badge ${st.cls}">${st.label}</span></td><td>${dias}</td><td>${item.phone?`<a class="btn primary mini" target="_blank" href="${waLink(item)}">Enviar WhatsApp</a> <button class="gray mini" onclick="copyMsg('${item.id}')">Copiar msg</button>`:'<span class="muted">cadastre WhatsApp</span>'}</td>`; tb.appendChild(tr);});
 }
 function esc(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
-function updateStats(){ if(document.getElementById('loadedFiles')) loadedFiles.textContent=loadedFileNames.length ? 'Planilhas carregadas: '+loadedFileNames.join(' | ') : 'Nenhuma planilha carregada ainda.'; totalCount.textContent=rows.length; recentExpiredCount.textContent=rows.filter(i=>i.days<0&&i.days>-10&&i.phone).length; reactivationCount.textContent=rows.filter(i=>i.days<=-10&&i.phone).length; todayCount.textContent=rows.filter(i=>i.days===0&&i.phone).length; soonCount.textContent=rows.filter(i=>i.days>0&&i.days<=Number(rangeSelect.value)&&i.phone).length; noWhatsCount.textContent=rows.filter(i=>!i.phone).length; let systems=[...new Set(rows.map(r=>r.system||'Sem sistema'))].sort(); let cur=systemFilter.value; systemFilter.innerHTML='<option value="todos">Todos</option>'+systems.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join(''); systemFilter.value=[...systems,'todos'].includes(cur)?cur:'todos';}
+function updateStats(){ if(document.getElementById('loadedFiles')) loadedFiles.textContent=loadedFileNames.length ? 'Planilhas carregadas: '+loadedFileNames.join(' | ') : 'Nenhuma planilha carregada ainda.'; totalCount.textContent=rows.length; recentExpiredCount.textContent=rows.filter(i=>i.days<0&&i.days>-10).length; reactivationCount.textContent=rows.filter(i=>i.days<=-10).length; todayCount.textContent=rows.filter(i=>i.days===0).length; soonCount.textContent=rows.filter(i=>i.days>0&&i.days<=Number(rangeSelect.value)).length; noWhatsCount.textContent=rows.filter(i=>!i.phone).length; let systems=[...new Set(rows.map(r=>r.system||'Sem sistema'))].sort(); let cur=systemFilter.value; systemFilter.innerHTML='<option value="todos">Todos</option>'+systems.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join(''); systemFilter.value=[...systems,'todos'].includes(cur)?cur:'todos';}
 function updateSelected(){selectedInfo.textContent=`${rows.filter(r=>r.selected).length} selecionados`;}
 function toggleSel(id,v){let it=rows.find(r=>r.id===id); if(it)it.selected=v; updateSelected();}
 function selectVisible(v){filtered.forEach(i=>i.selected=v); render();}
